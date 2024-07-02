@@ -1,0 +1,134 @@
+<html>
+    <head>
+        <meta charset="UTF-8"/>
+    </head> 
+    <body>
+        {    
+        let $sr := doc("sr.xml")
+        return
+        <div>
+            <h2>0. Example query: Names of all channels of type Rikskanal</h2>
+            <ul id="query0">
+                {
+                    for $c in $sr/sr/channels/channel
+                        where $c/channeltype = "Rikskanal"
+                        return <li>{string($c/name)}</li>
+                }
+            </ul>
+
+            <h2>1. List the distinct editors of the channel with the id 132</h2>
+            <ul id="query1">
+                {
+                    for $e in distinct-values($sr/sr/programs/program[channel = 132]/editor)
+                    order by $e 
+                    return <li>{string($e)}</li>    
+                }
+            </ul>
+
+            <h2>2. List the distinct names of the editors of broadcasts with a duration less than 143</h2>
+            <ul id="query2">
+                {
+                    let $dur := $sr/sr/broadcasts/broadcast[duration < 143]
+                    for $e in distinct-values($sr/sr/programs/program[@id = $dur/program]/editor)
+                    order by $e 
+                    return <li>{string($e)}</li>
+                }
+            </ul>
+
+            <h2>3. List the total time of all broadcasts of channel P6</h2>
+            <ul id="query3">
+                {
+                  
+                    let $c := $sr/sr/channels/channel[name = "P6"]/@id
+                    let $p := $sr/sr/programs/program[channel = $c]/@id
+                    return <li>{sum($sr/sr/broadcasts/broadcast[program = $p]/duration)}</li>
+
+
+                }
+            </ul>
+
+            <h2>4. List editors of channel P2, along with the amount of distinct categories they have worked on, on the format 'Editor,categories'</h2>
+            <ul id="query4">
+                {
+                    let $channelID := $sr/sr/channels/channel[name = "P2"]/@id
+
+                    for $e in distinct-values($sr/sr/programs/program[channel = $channelID]/editor)
+
+                    let $a := count(distinct-values($sr/sr/programs/program[editor = $e]/category))
+
+                    return <li>{concat($e, ',', $a)}</li>
+                    
+                }
+            </ul>
+            <h2>5. List the distinct editors who have never worked on channel P3</h2>
+            <ul id="query5">
+                {
+                    let $channelID := $sr/sr/channels/channel[name = "P3"]/@id
+                    let $p := $sr/sr/programs/program[channel = $channelID]/editor
+
+                    for $e in distinct-values($sr/sr/programs/program/editor)
+                    group by $e
+                    where not ($e = $p)
+                    return <li>{string($e)}</li>
+                }
+            </ul>
+            <h2>6. List the top 7 programs names in terms of highest total broadcast time</h2>
+            <ul id="query6">
+                {
+
+                    let $getnames := (                        
+                        for $n in distinct-values($sr/sr/programs/program/@id)
+
+                        let $dur := sum($sr/sr/broadcasts/broadcast[program = $n]/duration)
+
+                        order by $dur descending
+
+                        return <li>{string($sr/sr/programs/program[@id = $n]/name)}</li>
+                    )
+                    return subsequence($getnames,1,7)
+
+                }
+            </ul>
+            <h2>7. List the lastest broadcast date with the category 'Livsåskådning'.</h2>
+            <ul id="query7">
+                {
+                    let $cat := $sr/sr/categories/category[name = "Livsåskådning"]/@id 
+                    let $p :=$sr/sr/programs/program[category = $cat]/@id
+
+                    let $b := ( 
+                        for $br in distinct-values($sr/sr/broadcasts/broadcast[program = $p]/broadcast_date)
+                        let $date :=  xs:dateTime($br)
+                        order by $date descending
+                        return <li>{$date}</li>
+                    )
+
+                    return subsequence($b,1,1)
+                }
+            </ul>
+            <h2>8. List the 6-10th best editors in terms of highest total broadcast time of programs with category 'Musik'</h2>
+            <ul id="query8">
+                {
+                    let $cat := $sr/sr/categories/category[name = "Musik"]/@id
+                    let $p := data($sr/sr/programs/program[category = $cat]/@id)
+
+                    let $getnames := (                        
+                        for $n in distinct-values($p)
+
+                        let $dur := max(distinct-values(data($sr/sr/broadcasts/broadcast[program = $n]/duration)))
+
+                        order by $dur descending
+                        return <li>{string($sr/sr/programs/program[category = $cat and @id = $n]/editor)}</li>
+                    )
+                    
+                     
+                    
+
+                    let $res := subsequence((distinct-values($getnames)),6,5)
+                    for $q in $res
+                    return <li>{$q}</li>
+                }
+            </ul>
+        </div>
+        }
+    </body>
+</html>
